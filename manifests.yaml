@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: workspaces
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: workspace-bot
+  namespace: workspaces
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: workspace-bot-secret
+  namespace: workspaces
+  annotations:
+    kubernetes.io/service-account.name: workspace-bot
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: workspace-bot-role
+  namespace: workspaces
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: workspace-bot-rolebinding
+  namespace: workspaces
+subjects:
+  - kind: ServiceAccount
+    name: workspace-bot
+    namespace: workspaces
+roleRef:
+  kind: Role
+  name: workspace-bot-role
+  apiGroup: rbac.authorization.k8s.io

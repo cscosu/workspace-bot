@@ -13,7 +13,8 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@kubernetes/client-node": "^0.20.0",
+    "@kubernetes/client-node": "next",
+    "dayjs": "^1.11.10",
     "discord.js": "^14.14.1"
   }
 }
