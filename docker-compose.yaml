@@ -1,0 +1,6 @@
+services:
+  bot:
+    build: .
+    volumes:
+      - .:/app
+    command: bun dev
