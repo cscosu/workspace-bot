@@ -68,10 +68,25 @@ const createWorkspace: Command = {
     const pods = await k8sApi.listNamespacedPod({ namespace: "workspaces" });
     if (pods.items.find((pod) => pod.metadata?.name === podName)) {
       await interaction.editReply({
-        content: `Workspace already exists! Visit it at `,
+        content: `Workspace already exists!`,
+        components: [
+          {
+            type: ComponentType.ActionRow,
+            components: [
+              {
+                type: ComponentType.Button,
+                style: ButtonStyle.Link,
+                url: "http://localhost:9001",
+                label: "Open workspace",
+              },
+            ],
+          },
+        ],
       });
       return;
     }
+
+    const password = "password";
 
     let pod = await k8sApi.createNamespacedPod({
       namespace: "workspaces",
@@ -220,7 +235,7 @@ const createWorkspace: Command = {
     await interaction.editReply({
       content: `Workspace created! It will expire at <t:${Math.floor(
         endTime.getTime() / 1000
-      )}:t>`,
+      )}:t>. Log in using the password ||${password}||`,
       components: [
         {
           type: ComponentType.ActionRow,
