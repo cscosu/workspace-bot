@@ -8,11 +8,13 @@ import {
   ComponentType,
   Events,
   GatewayIntentBits,
+  GuildMemberRoleManager,
 } from "discord.js";
 import k8s from "@kubernetes/client-node";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { randomBytes } from "node:crypto";
 
 dayjs.extend(duration);
 dayjs.extend(relativeTime);
@@ -20,7 +22,8 @@ dayjs.extend(relativeTime);
 const kc = new k8s.KubeConfig();
 kc.loadFromDefault();
 
-const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
+const k8sCore = kc.makeApiClient(k8s.CoreV1Api);
+const k8sNetworking = kc.makeApiClient(k8s.NetworkingV1Api);
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
@@ -59,14 +62,25 @@ const createWorkspace: Command = {
     },
   ],
   async run(interaction) {
+    const roles = interaction.member?.roles as GuildMemberRoleManager;
+
+    // only those with engineering role are authorized to run this command (right now)
+    if (!roles.cache.some((role) => role.id === "832314924498944051")) {
+      interaction.reply({
+        content: "You are not authorized to run this command",
+        ephemeral: true,
+      });
+      return;
+    }
+
     await interaction.deferReply({ ephemeral: true });
     await sleep(1000 * 5);
 
     const identifier = `${interaction.user.globalName}-${interaction.user.id}`;
-    const podName = `workspace-${identifier}`;
+    const id = `workspace-${identifier}`;
 
-    const pods = await k8sApi.listNamespacedPod({ namespace: "workspaces" });
-    if (pods.items.find((pod) => pod.metadata?.name === podName)) {
+    const pods = await k8sCore.listNamespacedPod({ namespace: "workspaces" });
+    if (pods.items.find((pod) => pod.metadata?.name === id)) {
       await interaction.editReply({
         content: `Workspace already exists!`,
         components: [
@@ -76,7 +90,7 @@ const createWorkspace: Command = {
               {
                 type: ComponentType.Button,
                 style: ButtonStyle.Link,
-                url: "http://localhost:9001",
+                url: `https://workspace.osucyber.club/${interaction.user.globalName}/`,
                 label: "Open workspace",
               },
             ],
@@ -86,13 +100,101 @@ const createWorkspace: Command = {
       return;
     }
 
-    const password = "password";
+    const password = randomBytes(4).toString("hex");
 
-    let pod = await k8sApi.createNamespacedPod({
+    await k8sCore.createNamespacedService({
       namespace: "workspaces",
       body: {
         metadata: {
-          name: podName,
+          name: id,
+          labels: {
+            app: id,
+          },
+        },
+        spec: {
+          type: "ClusterIP",
+          selector: {
+            app: id,
+          },
+          ports: [
+            {
+              name: "http",
+              protocol: "TCP",
+              port: 8080,
+              targetPort: 8080,
+            },
+          ],
+        },
+      },
+    });
+
+    await k8sNetworking.createNamespacedIngress({
+      namespace: "workspaces",
+      body: {
+        metadata: {
+          name: id,
+          annotations: {
+            "cert-manager.io/cluster-issuer": "letsencrypt-prod",
+            "nginx.ingress.kubernetes.io/rewrite-target": "/$1",
+          },
+        },
+        spec: {
+          ingressClassName: "public",
+          rules: [
+            {
+              host: "workspace.osucyber.club",
+              http: {
+                paths: [
+                  {
+                    path: `/${interaction.user.globalName}/(.*)`,
+                    pathType: "Prefix",
+                    backend: {
+                      service: {
+                        name: id,
+                        port: {
+                          name: "http",
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+          tls: [
+            {
+              hosts: ["workspace.osucyber.club"],
+              secretName: "workspace-tls-certificate",
+            },
+          ],
+        },
+      },
+    });
+
+    await k8sCore.createNamespacedConfigMap({
+      namespace: "workspaces",
+      body: {
+        metadata: {
+          name: id,
+        },
+        data: {
+          "config.yaml": `bind-addr: 127.0.0.1:8080
+auth: password
+password: ${password}
+cert: false
+`,
+        },
+      },
+    });
+
+    let pod = await k8sCore.createNamespacedPod({
+      namespace: "workspaces",
+      body: {
+        metadata: {
+          name: id,
+          labels: {
+            app: id,
+          },
           annotations: {
             "io.kubernetes.cri-o.userns-mode": "auto:size=65536",
           },
@@ -100,15 +202,26 @@ const createWorkspace: Command = {
         spec: {
           runtimeClassName: "sysbox-runc",
           hostname: "cscosu",
+          dnsPolicy: "None",
+          dnsConfig: {
+            nameservers: ["1.1.1.1"],
+          },
           containers: [
             {
               name: "workspace",
               image: "ghcr.io/cscosu/vs-workspace:latest",
               imagePullPolicy: "Always",
+              volumeMounts: [
+                {
+                  name: "code-server-config",
+                  mountPath: "/home/coder/.config/code-server/config.yaml",
+                  subPath: "config.yaml",
+                },
+              ],
               resources: {
                 limits: {
                   cpu: "500m",
-                  memory: "768Mi",
+                  memory: "2048Mi",
                 },
                 requests: {
                   cpu: "10m",
@@ -117,13 +230,21 @@ const createWorkspace: Command = {
               },
             },
           ],
+          volumes: [
+            {
+              name: "code-server-config",
+              configMap: {
+                name: id,
+              },
+            },
+          ],
         },
       },
     });
 
     do {
-      pod = await k8sApi.readNamespacedPod({
-        name: podName,
+      pod = await k8sCore.readNamespacedPod({
+        name: id,
         namespace: "workspaces",
       });
       sleep(1000);
@@ -158,7 +279,7 @@ const createWorkspace: Command = {
                 {
                   type: ComponentType.Button,
                   style: ButtonStyle.Link,
-                  url: "http://localhost:9001",
+                  url: `https://workspace.osucyber.club/${interaction.user.globalName}/`,
                   label: "Open workspace",
                 },
               ],
@@ -173,8 +294,8 @@ const createWorkspace: Command = {
           const t = timeouts.get(interaction.user.id);
           clearTimeout(t?.timeout);
 
-          const pod = await k8sApi.readNamespacedPod({
-            name: podName,
+          const pod = await k8sCore.readNamespacedPod({
+            name: id,
             namespace: "workspaces",
           });
 
@@ -185,8 +306,23 @@ const createWorkspace: Command = {
             components: [],
           });
 
-          await k8sApi.deleteNamespacedPod({
-            name: podName,
+          await k8sCore.deleteNamespacedPod({
+            name: id,
+            namespace: "workspaces",
+          });
+
+          await k8sCore.deleteNamespacedService({
+            name: id,
+            namespace: "workspaces",
+          });
+
+          await k8sNetworking.deleteNamespacedIngress({
+            name: id,
+            namespace: "workspaces",
+          });
+
+          await k8sCore.deleteNamespacedConfigMap({
+            name: id,
             namespace: "workspaces",
           });
         };
@@ -207,7 +343,7 @@ const createWorkspace: Command = {
                   {
                     type: ComponentType.Button,
                     style: ButtonStyle.Link,
-                    url: "http://localhost:9001",
+                    url: `https://workspace.osucyber.club/${interaction.user.globalName}/`,
                     label: "Open workspace",
                   },
                 ],
@@ -243,7 +379,7 @@ const createWorkspace: Command = {
             {
               type: ComponentType.Button,
               style: ButtonStyle.Link,
-              url: "http://localhost:9001",
+              url: `https://workspace.osucyber.club/${interaction.user.globalName}/`,
               label: "Open workspace",
             },
           ],
@@ -257,6 +393,52 @@ const commands = [createWorkspace];
 
 client.once(Events.ClientReady, async (c) => {
   await c.application.commands.set(commands);
+
+  const pods = await k8sCore.listNamespacedPod({ namespace: "workspaces" });
+  pods.items.forEach(async (pod) => {
+    if (pod.metadata?.name?.startsWith("workspace-")) {
+      await k8sCore.deleteNamespacedPod({
+        name: pod.metadata.name,
+        namespace: "workspaces",
+      });
+    }
+  });
+
+  const services = await k8sCore.listNamespacedService({
+    namespace: "workspaces",
+  });
+  services.items.forEach(async (service) => {
+    if (service.metadata?.name?.startsWith("workspace-")) {
+      await k8sCore.deleteNamespacedService({
+        name: service.metadata.name,
+        namespace: "workspaces",
+      });
+    }
+  });
+
+  const ingresses = await k8sNetworking.listNamespacedIngress({
+    namespace: "workspaces",
+  });
+  ingresses.items.forEach(async (ingress) => {
+    if (ingress.metadata?.name?.startsWith("workspace-")) {
+      await k8sNetworking.deleteNamespacedIngress({
+        name: ingress.metadata.name,
+        namespace: "workspaces",
+      });
+    }
+  });
+
+  const configmaps = await k8sCore.listNamespacedConfigMap({
+    namespace: "workspaces",
+  });
+  configmaps.items.forEach(async (configmap) => {
+    if (configmap.metadata?.name?.startsWith("workspace-")) {
+      await k8sCore.deleteNamespacedConfigMap({
+        name: configmap.metadata.name,
+        namespace: "workspaces",
+      });
+    }
+  });
 
   console.log(`${c.user.tag} is ready!`);
 });
