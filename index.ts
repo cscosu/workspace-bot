@@ -65,7 +65,11 @@ const createWorkspace: Command = {
     const roles = interaction.member?.roles as GuildMemberRoleManager;
 
     // only those with engineering role are authorized to run this command (right now)
-    if (!roles.cache.some((role) => role.id === "832314924498944051")) {
+    if (
+      !roles.cache.some((role) =>
+        ["832314924498944051", "1011443117850898473"].includes(role.id)
+      )
+    ) {
       interaction.reply({
         content: "You are not authorized to run this command",
         ephemeral: true,
@@ -194,6 +198,7 @@ cert: false
           name: id,
           labels: {
             app: id,
+            workspace: "true",
           },
           annotations: {
             "io.kubernetes.cri-o.userns-mode": "auto:size=65536",
@@ -250,10 +255,10 @@ cert: false
       sleep(1000);
     } while (pod.status?.phase !== "Running");
 
-    const workspaceDuration = 1000 * 60 * 60;
+    const workspaceDuration = 1000 * 60 * 60 * 24;
 
     const warnFn = (deleteTimestamp: Date) => {
-      const warningOffset = 1000 * 60 * 10;
+      const warningOffset = 1000 * 60 * 60 * 1;
 
       setTimeout(async () => {
         const message = await interaction.user.send({
@@ -369,9 +374,9 @@ cert: false
     warnFn(endTime);
 
     await interaction.editReply({
-      content: `Workspace created! It will expire at <t:${Math.floor(
+      content: `Workspace created! It will expire <t:${Math.floor(
         endTime.getTime() / 1000
-      )}:t>. Log in using the password ||${password}||`,
+      )}:F>. Log in using the password ||${password}||`,
       components: [
         {
           type: ComponentType.ActionRow,

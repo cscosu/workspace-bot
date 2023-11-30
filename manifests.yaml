@@ -42,12 +42,35 @@ roleRef:
   name: workspace-bot-role
   apiGroup: rbac.authorization.k8s.io
 ---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: workspace-bot
+  labels:
+    app: workspace-bot
+spec:
+  serviceAccountName: workspace-bot
+  containers:
+    - name: workspace-bot
+      imagePullPolicy: Always
+      image: ghcr.io/cscosu/workspace-bot:latest
+      env:
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: "0"
+        - name: DISCORD_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: bot-token
+              key: DISCORD_BOT_TOKEN
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: workspace-network-policy
 spec:
-  podSelector: {}
+  podSelector:
+    matchLabels:
+      workspace: "true"
   policyTypes:
     - Ingress
     - Egress
