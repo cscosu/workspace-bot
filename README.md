@@ -2,7 +2,7 @@
 
 Provision VS Code server workspaces as Kubernetes resources from a Discord bot.
 
-![Discord slash command](docs/screenshot.png)
+![Discord slash command](docs/slashcommand.png)
 
 ![Workspace](docs/workspace.png)
 
