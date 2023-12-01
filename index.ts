@@ -85,6 +85,7 @@ const createWorkspace: Command = {
 
     const identifier = `${interaction.user.username}-${interaction.user.id}`;
     const id = `workspace-${identifier}`;
+    const password = randomBytes(4).toString("hex");
 
     const pods = await k8sCore.listNamespacedPod({ namespace: "workspaces" });
     if (pods.items.find((pod) => pod.metadata?.name === id)) {
@@ -97,7 +98,7 @@ const createWorkspace: Command = {
               {
                 type: ComponentType.Button,
                 style: ButtonStyle.Link,
-                url: `https://workspace.osucyber.club/${interaction.user.username}/`,
+                url: `https://workspace.osucyber.club/${interaction.user.username}/login?password=${password}`,
                 label: "Open workspace",
               },
             ],
@@ -106,8 +107,6 @@ const createWorkspace: Command = {
       });
       return;
     }
-
-    const password = randomBytes(4).toString("hex");
 
     await k8sCore.createNamespacedService({
       namespace: "workspaces",
@@ -287,7 +286,7 @@ cert: false
                 {
                   type: ComponentType.Button,
                   style: ButtonStyle.Link,
-                  url: `https://workspace.osucyber.club/${interaction.user.username}/`,
+                  url: `https://workspace.osucyber.club/${interaction.user.username}/login?password=${password}`,
                   label: "Open workspace",
                 },
               ],
@@ -351,7 +350,7 @@ cert: false
                   {
                     type: ComponentType.Button,
                     style: ButtonStyle.Link,
-                    url: `https://workspace.osucyber.club/${interaction.user.username}/`,
+                    url: `https://workspace.osucyber.club/${interaction.user.username}/login?password=${password}`,
                     label: "Open workspace",
                   },
                 ],
@@ -381,7 +380,7 @@ cert: false
     await interaction.editReply({
       content: `Workspace created! It will expire <t:${Math.floor(
         endTime.getTime() / 1000
-      )}:F>. Log in using the password ||${password}||`,
+      )}:F>`,
       components: [
         {
           type: ComponentType.ActionRow,
@@ -389,7 +388,7 @@ cert: false
             {
               type: ComponentType.Button,
               style: ButtonStyle.Link,
-              url: `https://workspace.osucyber.club/${interaction.user.username}/`,
+              url: `https://workspace.osucyber.club/${interaction.user.username}/login?password=${password}`,
               label: "Open workspace",
             },
           ],
