@@ -10,11 +10,14 @@ import {
   GatewayIntentBits,
   GuildMemberRoleManager,
 } from "discord.js";
-import k8s from "@kubernetes/client-node";
+import * as k8s from "@kubernetes/client-node";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { randomBytes } from "node:crypto";
+import { config } from "dotenv";
+
+config();
 
 dayjs.extend(duration);
 dayjs.extend(relativeTime);
@@ -373,6 +376,8 @@ cert: false
     const endTime = new Date(new Date().getTime() + workspaceDuration);
     warnFn(endTime);
 
+    console.log(`Created workspace for ${interaction.user.globalName}`);
+
     await interaction.editReply({
       content: `Workspace created! It will expire <t:${Math.floor(
         endTime.getTime() / 1000
@@ -467,4 +472,4 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-client.login(Bun.env.DISCORD_BOT_TOKEN);
+client.login(process.env.DISCORD_BOT_TOKEN);

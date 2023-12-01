@@ -1,10 +1,19 @@
-FROM oven/bun:1-slim
+FROM node:20-alpine as builder
+
+RUN npm install -g pnpm
 
 WORKDIR /app
-COPY package.json bun.lockb ./
+COPY package.json pnpm-lock.yaml ./
 
-RUN bun install
+RUN pnpm install
 
 COPY index.ts .
 
-CMD ["bun", "start"]
+RUN pnpm build
+
+FROM node:20-alpine as runner
+
+WORKDIR /app
+COPY --from=builder /app/out/index.js index.js
+
+CMD ["node", "index.js"]
