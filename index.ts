@@ -406,9 +406,9 @@ client.once(Events.ClientReady, async (c) => {
 
   const pods = await k8sCore.listNamespacedPod({ namespace: "workspaces" });
   pods.items.forEach(async (pod) => {
-    if (pod.metadata?.name?.startsWith("workspace-")) {
+    if (pod.metadata?.labels?.workspace === "true") {
       await k8sCore.deleteNamespacedPod({
-        name: pod.metadata.name,
+        name: pod.metadata.name!,
         namespace: "workspaces",
       });
     }
