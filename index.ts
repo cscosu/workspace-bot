@@ -83,7 +83,7 @@ const createWorkspace: Command = {
     await interaction.deferReply({ ephemeral: true });
     await sleep(1000 * 5);
 
-    const identifier = `${interaction.user.globalName}-${interaction.user.id}`;
+    const identifier = `${interaction.user.username}-${interaction.user.id}`;
     const id = `workspace-${identifier}`;
 
     const pods = await k8sCore.listNamespacedPod({ namespace: "workspaces" });
@@ -97,7 +97,7 @@ const createWorkspace: Command = {
               {
                 type: ComponentType.Button,
                 style: ButtonStyle.Link,
-                url: `https://workspace.osucyber.club/${interaction.user.globalName}/`,
+                url: `https://workspace.osucyber.club/${interaction.user.username}/`,
                 label: "Open workspace",
               },
             ],
@@ -153,7 +153,7 @@ const createWorkspace: Command = {
               http: {
                 paths: [
                   {
-                    path: `/${interaction.user.globalName}/(.*)`,
+                    path: `/${interaction.user.username}/(.*)`,
                     pathType: "Prefix",
                     backend: {
                       service: {
@@ -287,7 +287,7 @@ cert: false
                 {
                   type: ComponentType.Button,
                   style: ButtonStyle.Link,
-                  url: `https://workspace.osucyber.club/${interaction.user.globalName}/`,
+                  url: `https://workspace.osucyber.club/${interaction.user.username}/`,
                   label: "Open workspace",
                 },
               ],
@@ -351,7 +351,7 @@ cert: false
                   {
                     type: ComponentType.Button,
                     style: ButtonStyle.Link,
-                    url: `https://workspace.osucyber.club/${interaction.user.globalName}/`,
+                    url: `https://workspace.osucyber.club/${interaction.user.username}/`,
                     label: "Open workspace",
                   },
                 ],
@@ -376,7 +376,7 @@ cert: false
     const endTime = new Date(new Date().getTime() + workspaceDuration);
     warnFn(endTime);
 
-    console.log(`Created workspace for ${interaction.user.globalName}`);
+    console.log(`Created workspace for ${interaction.user.username}`);
 
     await interaction.editReply({
       content: `Workspace created! It will expire <t:${Math.floor(
@@ -389,7 +389,7 @@ cert: false
             {
               type: ComponentType.Button,
               style: ButtonStyle.Link,
-              url: `https://workspace.osucyber.club/${interaction.user.globalName}/`,
+              url: `https://workspace.osucyber.club/${interaction.user.username}/`,
               label: "Open workspace",
             },
           ],
