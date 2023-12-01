@@ -62,6 +62,10 @@ spec:
             secretKeyRef:
               name: bot-token
               key: DISCORD_BOT_TOKEN
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
