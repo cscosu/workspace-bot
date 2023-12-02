@@ -8,6 +8,7 @@ import {
   ComponentType,
   Events,
   GatewayIntentBits,
+  GuildMemberRoleManager,
 } from "discord.js";
 import * as k8s from "@kubernetes/client-node";
 import dayjs from "dayjs";
@@ -65,7 +66,6 @@ const createWorkspace: Command = {
   ],
   async run(interaction) {
     await interaction.deferReply({ ephemeral: true });
-    await sleep(1000 * 5);
 
     const identifier = `${interaction.user.username}-${interaction.user.id}`;
     const id = `workspace-${identifier}`;
@@ -75,7 +75,7 @@ const createWorkspace: Command = {
     if (existingPod) {
       const password = existingPod.metadata?.labels?.["password"];
       await interaction.editReply({
-        content: `Workspace already exists!`,
+        content: `Workspace already exists! Access it with the button below.`,
         components: [
           {
             type: ComponentType.ActionRow,
@@ -189,6 +189,8 @@ cert: false
             app: id,
             workspace: "true",
             password,
+            discordId: interaction.user.id,
+            discordUsername: interaction.user.username,
           },
           annotations: {
             "io.kubernetes.cri-o.userns-mode": "auto:size=65536",
@@ -404,7 +406,57 @@ cert: false
   },
 };
 
-const commands = [createWorkspace];
+const listWorkspaces: Command = {
+  name: "wadmin",
+  description: "Linux workspace management",
+  options: [
+    {
+      name: "list",
+      type: ApplicationCommandOptionType.Subcommand,
+      description: "List existing workspaces (admin only)",
+    },
+  ],
+  async run(interaction) {
+    const roles = interaction.member?.roles as GuildMemberRoleManager;
+    // only admin role can run this command
+    if (!roles.cache.some((role) => role.id === "796887971512320040")) {
+      await interaction.reply({
+        content: "You do not have permission to run this command!",
+        ephemeral: true,
+      });
+      return;
+    }
+
+    await interaction.deferReply({ ephemeral: true });
+
+    const pods = await k8sCore.listNamespacedPod({ namespace: "workspaces" });
+    const workspacePods = pods.items.filter(
+      (pod) => pod.metadata?.labels?.workspace === "true"
+    );
+
+    const workspaces = workspacePods.map((pod) => {
+      const username = pod.metadata?.labels?.["discordUsername"];
+      const discordId = pod.metadata?.labels?.["discordId"]!;
+      const password = pod.metadata?.labels?.["password"];
+
+      return {
+        url: `https://workspace.osucyber.club/${username}/login?password=${password}`,
+        discordId,
+      };
+    });
+
+    await interaction.editReply({
+      content:
+        "Here are the current workspaces:\n\n" +
+        workspaces
+          .map((workspace) => `<@${workspace.discordId}> ${workspace.url}`)
+          .join("\n"),
+      allowedMentions: { parse: [] },
+    });
+  },
+};
+
+const commands = [createWorkspace, listWorkspaces];
 
 client.once(Events.ClientReady, async (c) => {
   await c.application.commands.set(commands);
