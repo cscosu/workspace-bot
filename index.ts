@@ -67,8 +67,7 @@ const createWorkspace: Command = {
   async run(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
-    const identifier = `${interaction.user.username}-${interaction.user.id}`;
-    const id = `workspace-${identifier}`;
+    const id = `workspace-${interaction.user.id}`;
 
     const pods = await k8sCore.listNamespacedPod({ namespace: "workspaces" });
     const existingPod = pods.items.find((pod) => pod.metadata?.name === id);
@@ -83,7 +82,7 @@ const createWorkspace: Command = {
               {
                 type: ComponentType.Button,
                 style: ButtonStyle.Link,
-                url: `https://workspace.osucyber.club/${interaction.user.username}/login?password=${password}`,
+                url: `https://workspace.osucyber.club/${interaction.user.id}/login?password=${password}`,
                 label: "Open workspace",
               },
             ],
@@ -139,7 +138,7 @@ const createWorkspace: Command = {
               http: {
                 paths: [
                   {
-                    path: `/${interaction.user.username}/(.*)`,
+                    path: `/${interaction.user.id}/(.*)`,
                     pathType: "Prefix",
                     backend: {
                       service: {
@@ -282,7 +281,7 @@ cert: false
                 {
                   type: ComponentType.Button,
                   style: ButtonStyle.Link,
-                  url: `https://workspace.osucyber.club/${interaction.user.username}/login?password=${password}`,
+                  url: `https://workspace.osucyber.club/${interaction.user.id}/login?password=${password}`,
                   label: "Open workspace",
                 },
               ],
@@ -351,7 +350,7 @@ cert: false
                   {
                     type: ComponentType.Button,
                     style: ButtonStyle.Link,
-                    url: `https://workspace.osucyber.club/${interaction.user.username}/login?password=${password}`,
+                    url: `https://workspace.osucyber.club/${interaction.user.id}/login?password=${password}`,
                     label: "Open workspace",
                   },
                 ],
@@ -396,7 +395,7 @@ cert: false
             {
               type: ComponentType.Button,
               style: ButtonStyle.Link,
-              url: `https://workspace.osucyber.club/${interaction.user.username}/login?password=${password}`,
+              url: `https://workspace.osucyber.club/${interaction.user.id}/login?password=${password}`,
               label: "Open workspace",
             },
           ],
@@ -435,12 +434,11 @@ const listWorkspaces: Command = {
     );
 
     const workspaces = workspacePods.map((pod) => {
-      const username = pod.metadata?.labels?.["discordUsername"];
       const discordId = pod.metadata?.labels?.["discordId"]!;
       const password = pod.metadata?.labels?.["password"];
 
       return {
-        url: `https://workspace.osucyber.club/${username}/login?password=${password}`,
+        url: `https://workspace.osucyber.club/${discordId}/login?password=${password}`,
         discordId,
       };
     });
@@ -449,7 +447,10 @@ const listWorkspaces: Command = {
       content:
         "Here are the current workspaces:\n\n" +
         workspaces
-          .map((workspace) => `<@${workspace.discordId}> ${workspace.url}`)
+          .map(
+            (workspace) =>
+              `<@${workspace.discordId}> [Open workspace](${workspace.url})`
+          )
           .join("\n"),
       allowedMentions: { parse: [] },
     });
