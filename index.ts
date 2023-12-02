@@ -189,7 +189,6 @@ cert: false
             workspace: "true",
             password,
             discordId: interaction.user.id,
-            discordUsername: interaction.user.username,
           },
           annotations: {
             "io.kubernetes.cri-o.userns-mode": "auto:size=65536",
