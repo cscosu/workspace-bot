@@ -8,7 +8,6 @@ import {
   ComponentType,
   Events,
   GatewayIntentBits,
-  GuildMemberRoleManager,
 } from "discord.js";
 import * as k8s from "@kubernetes/client-node";
 import dayjs from "dayjs";
@@ -70,10 +69,11 @@ const createWorkspace: Command = {
 
     const identifier = `${interaction.user.username}-${interaction.user.id}`;
     const id = `workspace-${identifier}`;
-    const password = randomBytes(4).toString("hex");
 
     const pods = await k8sCore.listNamespacedPod({ namespace: "workspaces" });
-    if (pods.items.find((pod) => pod.metadata?.name === id)) {
+    const existingPod = pods.items.find((pod) => pod.metadata?.name === id);
+    if (existingPod) {
+      const password = existingPod.metadata?.labels?.["password"];
       await interaction.editReply({
         content: `Workspace already exists!`,
         components: [
@@ -92,6 +92,8 @@ const createWorkspace: Command = {
       });
       return;
     }
+
+    const password = randomBytes(4).toString("hex");
 
     await k8sCore.createNamespacedService({
       namespace: "workspaces",
@@ -186,6 +188,7 @@ cert: false
           labels: {
             app: id,
             workspace: "true",
+            password,
           },
           annotations: {
             "io.kubernetes.cri-o.userns-mode": "auto:size=65536",
@@ -233,6 +236,12 @@ cert: false
         },
       },
     });
+
+    const botChannel = await interaction.guild?.channels.fetch(
+      "797000475266383883"
+    );
+    if (!botChannel?.isTextBased())
+      throw new Error("Bot channel is not a text channel");
 
     do {
       pod = await k8sCore.readNamespacedPod({
@@ -317,6 +326,11 @@ cert: false
             name: id,
             namespace: "workspaces",
           });
+
+          botChannel.send({
+            content: `Automatically deleted workspace for <@${interaction.user.id}>`,
+            allowedMentions: { parse: [] },
+          });
         };
 
         const extendFn = async () => {
@@ -360,7 +374,14 @@ cert: false
     const endTime = new Date(new Date().getTime() + workspaceDuration);
     warnFn(endTime);
 
-    console.log(`Created workspace for ${interaction.user.username}`);
+    console.log(
+      `Created workspace for ${interaction.user.username} ${interaction.user.id}`
+    );
+
+    botChannel.send({
+      content: `Created workspace for <@${interaction.user.id}>`,
+      allowedMentions: { parse: [] },
+    });
 
     await interaction.editReply({
       content: `Workspace created! It will expire <t:${Math.floor(
