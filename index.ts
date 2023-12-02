@@ -65,21 +65,6 @@ const createWorkspace: Command = {
     },
   ],
   async run(interaction) {
-    const roles = interaction.member?.roles as GuildMemberRoleManager;
-
-    // only those with engineering role are authorized to run this command (right now)
-    if (
-      !roles.cache.some((role) =>
-        ["832314924498944051", "1011443117850898473"].includes(role.id)
-      )
-    ) {
-      interaction.reply({
-        content: "You are not authorized to run this command",
-        ephemeral: true,
-      });
-      return;
-    }
-
     await interaction.deferReply({ ephemeral: true });
     await sleep(1000 * 5);
 
