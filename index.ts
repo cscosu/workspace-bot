@@ -432,6 +432,13 @@ const listWorkspaces: Command = {
       (pod) => pod.metadata?.labels?.workspace === "true"
     );
 
+    if (workspacePods.length === 0) {
+      await interaction.editReply({
+        content: "There are no active workspaces",
+      });
+      return;
+    }
+
     const workspaces = workspacePods.map((pod) => {
       const discordId = pod.metadata?.labels?.["discordId"]!;
       const password = pod.metadata?.labels?.["password"];
