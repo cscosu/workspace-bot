@@ -57,6 +57,7 @@ const timeouts = new Map<
 const createWorkspace: Command = {
   name: "workspace",
   description: "Linux workspace management",
+  dmPermission: false,
   options: [
     {
       name: "create",
@@ -269,7 +270,7 @@ cert: false
                   type: ComponentType.Button,
                   style: ButtonStyle.Primary,
                   customId: "extend-session",
-                  label: "Add another hour",
+                  label: "Add another 24 hours",
                 },
                 {
                   type: ComponentType.Button,
@@ -407,6 +408,7 @@ cert: false
 const listWorkspaces: Command = {
   name: "wadmin",
   description: "Linux workspace management",
+  dmPermission: false,
   options: [
     {
       name: "list",
