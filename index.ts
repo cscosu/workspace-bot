@@ -342,7 +342,7 @@ cert: false
           await message.edit({
             content: `Extending the workspace until <t:${Math.floor(
               newDeleteTimestamp.getTime() / 1000
-            )}:t>`,
+            )}:F>`,
             components: [
               {
                 type: ComponentType.ActionRow,
